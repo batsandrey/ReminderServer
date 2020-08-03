@@ -7,9 +7,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.JpaVendorAdapter;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.annotation.Resource;
@@ -29,14 +31,14 @@ public class DatabaseConfig {
     private Environment env;
 
     // show db tables as classes
-    @Bean
+    @Bean(name="entityManagerFactory")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(){
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource());
         em.setPackagesToScan(env.getRequiredProperty("db.entity.package"));
         // using JPA adapter Hibernate
         em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-        em.setJpaVendorAdapter(getHibernateProperties());
+        em.setJpaProperties(getHibernateProperties());
 
         return em;
     }
@@ -63,6 +65,23 @@ public class DatabaseConfig {
         ds.setUsername(env.getRequiredProperty("db.username"));
         ds.setPassword(env.getRequiredProperty("db.password"));
 
+        // jta connection pool config
+        ds.setInitialSize(Integer.parseInt(env.getRequiredProperty("db.initialSize")));
+        ds.setMinIdle(Integer.parseInt(env.getRequiredProperty("db.minIdle")));
+        ds.setMaxIdle(Integer.parseInt(env.getRequiredProperty("db.maxIdle")));
+        ds.setTimeBetweenEvictionRunsMillis(Integer.parseInt(env.getRequiredProperty("db.timeBetweenEvictionRunsMillis")));
+        ds.setMinEvictableIdleTimeMillis(Integer.parseInt(env.getRequiredProperty("db.minEvictableIdleTimeMillis")));
+        ds.setTestOnBorrow(Boolean.parseBoolean((env.getRequiredProperty("db.testOnBorrow"))));
+        ds.setValidationQuery(env.getRequiredProperty("db.validationQuery"));
+
         return ds;
+    }
+
+    @Bean
+    public PlatformTransactionManager platformTransactionManager(){
+        JpaTransactionManager manager = new JpaTransactionManager();
+        manager.setEntityManagerFactory(entityManagerFactory().getObject());
+
+        return manager;
     }
 }
